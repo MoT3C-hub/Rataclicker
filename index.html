@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rataclicker</title>
+  <style>
+    :root { font-family: Arial, sans-serif; color: #f6f8fc; background: #0c1321; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; }
+    .sivu { max-width: 960px; margin: auto; padding: 28px 18px 45px; }
+    header { text-align: center; margin-bottom: 24px; }
+    h1 { color: #ffce43; font-size: clamp(2rem, 6vw, 3.5rem); margin: 8px 0; }
+    h2 { margin-top: 0; }
+    p { line-height: 1.5; }
+    .kortti { background: #172338; border: 1px solid #314159; border-radius: 18px; padding: 22px; margin-bottom: 18px; }
+    .tilastot { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; text-align: center; }
+    .tilasto { flex: 1 1 150px; background: #22324a; border-radius: 12px; padding: 14px; }
+    .tilasto strong { display: block; color: #ffce43; font-size: 1.8rem; margin-top: 5px; }
+    .rata { position: relative; height: 170px; margin: 20px 0; overflow: hidden; border: 8px solid #498450; border-radius: 18px; background: repeating-linear-gradient(90deg, #303a49 0 72px, #354253 72px 144px); }
+    .rata::before { content: ""; position: absolute; top: 50%; width: 100%; border-top: 4px dashed #faf4d8; transform: translateY(-50%); }
+    .lahto, .maali { position: absolute; top: 0; bottom: 0; width: 12px; z-index: 1; background: repeating-conic-gradient(#fff 0% 25%, #101820 0% 50%) 50% / 12px 24px; }
+    .lahto { left: 7%; }
+    .maali { right: 7%; }
+    .kilpa-auto { position: absolute; left: 8%; top: 50%; width: 94px; height: 44px; padding: 0; border: 3px solid #ad1b22; border-radius: 14px 25px 25px 14px; background: linear-gradient(#fb5158, #c91f2a); transform: translate(-50%, -50%); cursor: pointer; z-index: 2; transition: left .25s ease, transform .15s ease; box-shadow: 0 8px 12px #0008; }
+    .kilpa-auto:hover { transform: translate(-50%, -50%) scale(1.07); }
+    .kilpa-auto:active { transform: translate(-50%, -50%) scale(.95); }
+    .kilpa-auto::before, .kilpa-auto::after { content: ""; position: absolute; left: 15px; width: 16px; height: 11px; background: #101820; border-radius: 4px; z-index: -1; }
+    .kilpa-auto::before { top: -12px; }
+    .kilpa-auto::after { bottom: -12px; }
+    .ikkuna { position: absolute; left: 30px; top: 5px; width: 23px; height: 27px; background: #8bd8ef; border: 3px solid #1d3148; border-radius: 6px; }
+    .raita { position: absolute; left: 59px; top: 17px; width: 22px; height: 5px; background: #ffce43; border-radius: 8px; }
+    .ohje { text-align: center; color: #c7d5e7; }
+    progress { display: block; width: 100%; height: 24px; accent-color: #ffce43; }
+    .eteneminen { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; }
+    button { font: inherit; font-weight: bold; }
+    .aja { display: block; margin: 18px auto 0; padding: 15px 32px; border: 0; border-radius: 12px; background: #ffce43; color: #172338; font-size: 1.2rem; cursor: pointer; }
+    .aja:hover:not(:disabled) { background: #ffe07f; }
+    .kauppa { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .paivitys { display: flex; flex-direction: column; justify-content: space-between; gap: 12px; background: #22324a; border-radius: 12px; padding: 16px; }
+    .paivitys h3 { margin: 0; color: #ffce43; }
+    .paivitys p { margin: 7px 0 0; color: #dae4f0; }
+    .osta { padding: 10px; border: 0; border-radius: 9px; background: #67d7aa; color: #10221a; cursor: pointer; }
+    button:disabled { opacity: .48; cursor: not-allowed; }
+    .viesti { min-height: 24px; text-align: center; color: #ffce43; font-weight: bold; }
+    .uusi { display: block; margin: 12px auto 0; background: transparent; color: #f6f8fc; border: 1px solid #9eb1c9; border-radius: 9px; padding: 9px 14px; cursor: pointer; }
+    :focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+    @media (max-width: 480px) { .kortti { padding: 15px; } .rata { height: 150px; } }
+  </style>
+</head>
+<body>
+  <main class="sivu">
+    <header>
+      <h1>🏁 Rataclicker</h1>
+      <p>Kerää kilometrejä, paranna autoasi ja aja 250 kilometrin kilpailu maaliin!</p>
+    </header>
+
+    <section class="kortti" aria-label="Kilpailu">
+      <div class="tilastot">
+        <div class="tilasto">Ajetut kilometrit<strong id="kilometrit">0 / 250</strong></div>
+        <div class="tilasto">Kilometrit / klikkaus<strong id="klikkausTeho">1</strong></div>
+        <div class="tilasto">Automaattinen ajo<strong id="automaattiTeho">0 km/s</strong></div>
+      </div>
+
+      <div class="rata">
+        <div class="lahto"></div>
+        <div class="maali"></div>
+        <button class="kilpa-auto" id="auto" type="button" aria-label="Klikkaa autoa ja aja">
+          <span class="ikkuna"></span><span class="raita"></span>
+        </button>
+      </div>
+      <p class="ohje">Klikkaa autoa tai paina ajopainiketta.</p>
+      <progress id="edistyminen" value="0" max="250" aria-label="Kilpailun eteneminen"></progress>
+      <div class="eteneminen"><span>Lähtö</span><span>Maali: 250 km</span></div>
+      <button class="aja" id="aja" type="button">Aja!</button>
+      <p class="viesti" id="viesti" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="kortti" aria-labelledby="parannukset-otsikko">
+      <h2 id="parannukset-otsikko">Auton parannukset</h2>
+      <p>Käytä ajettuja kilometrejä parannusten ostamiseen.</p>
+      <div class="kauppa">
+        <div class="paivitys">
+          <div><h3>Tehokkaampi moottori</h3><p>+1 km jokaista klikkausta kohti.</p></div>
+          <button class="osta" id="moottori" type="button">Osta: 15 km</button>
+        </div>
+        <div class="paivitys">
+          <div><h3>Turbo</h3><p>+3 km jokaista klikkausta kohti.</p></div>
+          <button class="osta" id="turbo" type="button">Osta: 60 km</button>
+        </div>
+        <div class="paivitys">
+          <div><h3>Autopilotti</h3><p>Ajat automaattisesti 2 km sekunnissa.</p></div>
+          <button class="osta" id="autopilotti" type="button">Osta: 100 km</button>
+        </div>
+      </div>
+    </section>
+    <button class="uusi" id="uusi" type="button">Aloita uusi kilpailu</button>
+  </main>
+
+  <script>
+    const tavoite = 250;
+    const tallennusAvain = "rataclicker-tila";
+    const alkuTila = () => ({ kilometrit: 0, teho: 1, automaatti: 0, moottori: false, turbo: false, autopilotti: false });
+    let tila = alkuTila();
+
+    try {
+      const tallennettu = JSON.parse(localStorage.getItem(tallennusAvain));
+      if (tallennettu && Number.isFinite(tallennettu.kilometrit) && tallennettu.kilometrit >= 0 && tallennettu.kilometrit <= tavoite) {
+        tila = { ...alkuTila(), ...tallennettu };
+      }
+    } catch (virhe) {
+      tila = alkuTila();
+    }
+
+    const kilometrit = document.getElementById("kilometrit");
+    const klikkausTeho = document.getElementById("klikkausTeho");
+    const automaattiTeho = document.getElementById("automaattiTeho");
+    const edistyminen = document.getElementById("edistyminen");
+    const auto = document.getElementById("auto");
+    const ajaNappi = document.getElementById("aja");
+    const viesti = document.getElementById("viesti");
+    const parannukset = [
+      { tunnus: "moottori", hinta: 15, lisays: 1 },
+      { tunnus: "turbo", hinta: 60, lisays: 3 },
+      { tunnus: "autopilotti", hinta: 100, lisays: 2 }
+    ];
+
+    function tallenna() {
+      try {
+        localStorage.setItem(tallennusAvain, JSON.stringify(tila));
+      } catch (virhe) {
+        viesti.textContent = "Edistymistä ei voitu tallentaa selaimeen.";
+      }
+    }
+
+    function paivitaNakyma() {
+      const valmis = tila.kilometrit >= tavoite;
+      kilometrit.textContent = tila.kilometrit + " / " + tavoite;
+      klikkausTeho.textContent = tila.teho;
+      automaattiTeho.textContent = tila.automaatti + " km/s";
+      edistyminen.value = tila.kilometrit;
+      auto.style.left = 8 + (tila.kilometrit / tavoite) * 78 + "%";
+      auto.disabled = valmis;
+      ajaNappi.disabled = valmis;
+      viesti.textContent = valmis ? "Maali saavutettu! Voit aloittaa uuden kilpailun." : "";
+
+      for (const parannus of parannukset) {
+        const nappi = document.getElementById(parannus.tunnus);
+        const ostettu = tila[parannus.tunnus];
+        nappi.disabled = valmis || ostettu || tila.kilometrit < parannus.hinta;
+        nappi.textContent = ostettu ? "Ostettu" : "Osta: " + parannus.hinta + " km";
+      }
+    }
+
+    function aja() {
+      if (tila.kilometrit >= tavoite) return;
+      tila.kilometrit = Math.min(tavoite, tila.kilometrit + tila.teho);
+      paivitaNakyma();
+      tallenna();
+    }
+
+    function osta(parannus) {
+      if (tila[parannus.tunnus] || tila.kilometrit < parannus.hinta || tila.kilometrit >= tavoite) return;
+      tila.kilometrit -= parannus.hinta;
+      tila[parannus.tunnus] = true;
+      if (parannus.tunnus === "autopilotti") {
+        tila.automaatti += parannus.lisays;
+      } else {
+        tila.teho += parannus.lisays;
+      }
+      paivitaNakyma();
+      tallenna();
+    }
+
+    auto.addEventListener("click", aja);
+    ajaNappi.addEventListener("click", aja);
+    for (const parannus of parannukset) {
+      document.getElementById(parannus.tunnus).addEventListener("click", () => osta(parannus));
+    }
+    document.getElementById("uusi").addEventListener("click", () => {
+      tila = alkuTila();
+      paivitaNakyma();
+      tallenna();
+    });
+    setInterval(() => {
+      if (tila.automaatti > 0 && tila.kilometrit < tavoite) {
+        tila.kilometrit = Math.min(tavoite, tila.kilometrit + tila.automaatti);
+        paivitaNakyma();
+        tallenna();
+      }
+    }, 1000);
+    paivitaNakyma();
+  </script>
+</body>
+</html>
